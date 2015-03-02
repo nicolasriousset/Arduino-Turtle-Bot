@@ -28,6 +28,7 @@ boolean isTestMode = true;
 
 String comPortString;
 Serial myPort = null;
+LoadSamplesThread loadSamplesThread = null;
 
 void setup() {
   if (isInitialized) {
@@ -35,20 +36,23 @@ void setup() {
   }
   isInitialized = true;
 
-  print("Ports série : ");
-  println(Serial.list());
   println("Beginning setup");
 
-  println("Initialisation port");
-  if (isTestMode) { 
-    loadSamples();
-  } else {
-    myPort = new Serial(this, "COM8", 115200);
+  if (isTestMode) {
+    loadSamplesThread = new LoadSamplesThread(); 
+    loadSamplesThread.start();
+  } else if (Serial.list().length > 0) {
+    String comPortId = Serial.list()[0];
+    println("COM port initialization. Using " + comPortId);
+    myPort = new Serial(this, comPortId, 115200);
     if (myPort != null) {
       myPort.bufferUntil('\n'); // Trigger a SerialEvent on new line
     } else {
-      println("Impossible d'initialiser ");
+      println("COM port initialization failure");
     }
+  } else {
+    println("COM port initialization failure, no port found.");
+    exit();
   }
 
   size(SIDE_LENGTH, SIDE_LENGTH/2, P2D);
@@ -278,27 +282,36 @@ class Point {
   }
 }
 
-void loadSamples() {
-  try {
-    String sampleFile = "samples.csv";  
-    println(sampleFile);
+class LoadSamplesThread extends Thread {
+  LoadSamplesThread() {
+  }
 
-    InputStream fis = createInput(sampleFile);
+  public void run() {
+    loadSamples();
+  }
 
-    //Construct BufferedReader from InputStreamReader
-    BufferedReader br = new BufferedReader(new InputStreamReader(fis));
+  void loadSamples() {
+    try {
+      String sampleFile = "samples.csv";  
+      println(sampleFile);
 
-    String line = null;
-    while ( (line = br.readLine ()) != null) {
-      onDataRead(line);
+      InputStream fis = createInput(sampleFile);
+
+      //Construct BufferedReader from InputStreamReader
+      BufferedReader br = new BufferedReader(new InputStreamReader(fis));
+
+      String line = null;
+      while ( (line = br.readLine ()) != null) {
+        onDataRead(line);
+        Thread.sleep(50);
+      }
+
+      br.close();
+    } 
+    catch (Exception e) 
+    { 
+      e.printStackTrace();
     }
-
-    br.close();
-  } 
-  catch (Exception e) 
-  { 
-    e.printStackTrace();
   }
 }
-
 
