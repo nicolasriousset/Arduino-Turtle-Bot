@@ -1,4 +1,7 @@
 import processing.serial.*;
+import java.util.Map;
+import java.util.List;
+
 
 int SIDE_LENGTH = 1000;
 int ANGLE_BOUNDS = 90;
@@ -67,6 +70,7 @@ void draw() {
 
   drawFoundObjects();
   drawRadarLine();
+  drawIdentifiedObjects();
 }
 
 void addAngleToHistory(int angle) {
@@ -106,6 +110,59 @@ void addPointFromAngleAndDistance(int angle, int distance) {
   points[0] = new Point(px, py);
   
   addAngleToHistory(angle);  
+}
+
+void drawIdentifiedObjects() {
+  ArrayList<ArrayList<Point>> pointsGroupedByProximity = new ArrayList<ArrayList<Point>>();
+  for (int i=0; i<POINTS_HISTORY_SIZE; i++) {
+
+    Point point = points[i];
+    if (point != null) {
+      if (point.x==0 && point.y==0) continue;
+
+      boolean wasAdded = false;
+      for (List<Point> pointsGroup : pointsGroupedByProximity) {
+        for (Point neighbour : pointsGroup) {
+          if (neighbour.distance(point) < 20) {
+            pointsGroup.add(point);
+            wasAdded = true;
+            break;
+          }
+        }
+        if (wasAdded) {
+          break;
+        }
+      }
+      
+      if (!wasAdded) {
+        ArrayList<Point> newGroup = new ArrayList<Point>();
+        newGroup.add(point);
+        pointsGroupedByProximity.add(newGroup);
+      }
+    }
+  }
+
+    // For each group, compute a line.
+    println("Drawing groups");
+    for (List<Point> pointsGroup : pointsGroupedByProximity) {
+      println("Draw group");
+      Point left = new Point(pointsGroup.get(0).getX(), pointsGroup.get(0).getY());
+      Point right = new Point(left.getX(), left.getY()); 
+      for (Point neighbour : pointsGroup) {
+        if (left.getX() < neighbour.getX()) {
+          left.setX(neighbour.getX()); 
+          left.setY(neighbour.getY()); 
+        }
+        if (right.getX() > neighbour.getX()) {
+          right.setX(neighbour.getX()); 
+          right.setY(neighbour.getY()); 
+        }
+      }
+      fill(204, 102, 0);
+      stroke(204, 102, 0);
+      line(left.getX(), left.getY(), right.getX(), right.getY());
+    }
+  
 }
 
 void drawFoundObjects() {
@@ -184,6 +241,35 @@ void serialEvent(Serial cPort) {
     } 
     catch (Exception e) {
     }
+  }
+}
+
+class Point {
+  int x, y;
+
+  Point(int xPos, int yPos) {
+    x = xPos;
+    y = yPos;
+  }
+
+  int getX() {
+    return x;
+  }
+
+  int getY() {
+    return y;
+  }
+
+  void setX(int x) {
+    this.x = x;
+  }
+
+  void setY(int y) {
+    this.y = y;
+  }
+  
+  float distance(Point other) {
+    return sqrt(sq(x - other.x) + sq(y - other.y));
   }
 }
 
@@ -696,20 +782,5 @@ addPointFromAngleAndDistance(2,783);
   addPointFromAngleAndDistance(25,87);
 }
 
-class Point {
-  int x, y;
 
-  Point(int xPos, int yPos) {
-    x = xPos;
-    y = yPos;
-  }
-
-  int getX() {
-    return x;
-  }
-
-  int getY() {
-    return y;
-  }
-}
 
