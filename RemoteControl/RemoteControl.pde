@@ -1,14 +1,14 @@
 import processing.serial.*;
 import java.util.Map;
 import java.util.List;
-
+import java.io.*;
 
 int SIDE_LENGTH = 1000;
 int ANGLE_BOUNDS = 90;
 int ANGLE_STEP = 2;
 int HISTORY_SIZE = 100;
 int POINTS_HISTORY_SIZE = HISTORY_SIZE;
-int MAX_DISTANCE = 50;
+int MAX_DISTANCE = 120;
 
 int radius = SIDE_LENGTH / 4;
 float x = 0.0;
@@ -34,14 +34,14 @@ void setup() {
     return;
   }
   isInitialized = true;
-  
+
   print("Ports série : ");
   println(Serial.list());
   println("Beginning setup");
 
   println("Initialisation port");
   if (isTestMode) { 
-    recordTestData();
+    loadSamples();
   } else {
     myPort = new Serial(this, "COM8", 115200);
     if (myPort != null) {
@@ -50,7 +50,7 @@ void setup() {
       println("Impossible d'initialiser ");
     }
   }
-  
+
   size(SIDE_LENGTH, SIDE_LENGTH/2, P2D);
   println("Beginning setup 2");
   noStroke();
@@ -99,7 +99,7 @@ void drawRadarLine() {
 
 void addPointFromAngleAndDistance(int angle, int distance) {
   shiftPointsArray();
-  
+
   float radian = radians(angle);
   x = distance * sin(radian);
   y = distance * cos(radian);
@@ -108,8 +108,8 @@ void addPointFromAngleAndDistance(int angle, int distance) {
   int py = (int)(centerY - y);
 
   points[0] = new Point(px, py);
-  
-  addAngleToHistory(angle);  
+
+  addAngleToHistory(angle);
 }
 
 void drawIdentifiedObjects() {
@@ -133,7 +133,7 @@ void drawIdentifiedObjects() {
           break;
         }
       }
-      
+
       if (!wasAdded) {
         ArrayList<Point> newGroup = new ArrayList<Point>();
         newGroup.add(point);
@@ -142,27 +142,26 @@ void drawIdentifiedObjects() {
     }
   }
 
-    // For each group, compute a line.
-    println("Drawing groups");
-    for (List<Point> pointsGroup : pointsGroupedByProximity) {
-      println("Draw group");
-      Point left = new Point(pointsGroup.get(0).getX(), pointsGroup.get(0).getY());
-      Point right = new Point(left.getX(), left.getY()); 
-      for (Point neighbour : pointsGroup) {
-        if (left.getX() < neighbour.getX()) {
-          left.setX(neighbour.getX()); 
-          left.setY(neighbour.getY()); 
-        }
-        if (right.getX() > neighbour.getX()) {
-          right.setX(neighbour.getX()); 
-          right.setY(neighbour.getY()); 
-        }
+  // For each group, compute a line.
+  println("Drawing groups");
+  for (List<Point> pointsGroup : pointsGroupedByProximity) {
+    println("Draw group");
+    Point left = new Point(pointsGroup.get(0).getX(), pointsGroup.get(0).getY());
+    Point right = new Point(left.getX(), left.getY()); 
+    for (Point neighbour : pointsGroup) {
+      if (left.getX() < neighbour.getX()) {
+        left.setX(neighbour.getX()); 
+        left.setY(neighbour.getY());
       }
-      fill(204, 102, 0);
-      stroke(204, 102, 0);
-      line(left.getX(), left.getY(), right.getX(), right.getY());
+      if (right.getX() > neighbour.getX()) {
+        right.setX(neighbour.getX()); 
+        right.setY(neighbour.getY());
+      }
     }
-  
+    fill(204, 102, 0);
+    stroke(204, 102, 0);
+    line(left.getX(), left.getY(), right.getX(), right.getY());
+  }
 }
 
 void drawFoundObjects() {
@@ -228,19 +227,25 @@ void serialEvent(Serial cPort) {
   println("serialEvent");
   comPortString = cPort.readString();
   if (comPortString != null) {
-    comPortString=trim(comPortString);
-    String[] values = split(comPortString, ',');
-    try {
-      int angle = Integer.parseInt(values[0]);      
-      int distance = int(map(Integer.parseInt(values[1]), 1, MAX_DISTANCE, 1, radius));
-      print("angle : ");
-      print(angle);
-      print(", distance : ");
-      println(distance);
-      addPointFromAngleAndDistance(angle, distance);
-    } 
-    catch (Exception e) {
-    }
+    onDataRead(comPortString);
+  }
+}
+
+void onDataRead(String data) {
+  data=trim(data);
+
+  println("Parsing " + data);
+  String[] values = split(data, ',');
+  try {
+    int angle = Integer.parseInt(values[0]);      
+    int distance = int(map(Integer.parseInt(values[1]), 1, MAX_DISTANCE, 1, radius));
+    print("angle : ");
+    print(angle);
+    print(", distance : ");
+    println(distance);
+    addPointFromAngleAndDistance(angle, distance);
+  } 
+  catch (Exception e) {
   }
 }
 
@@ -267,520 +272,33 @@ class Point {
   void setY(int y) {
     this.y = y;
   }
-  
+
   float distance(Point other) {
     return sqrt(sq(x - other.x) + sq(y - other.y));
   }
 }
 
-void recordTestData() {
-  addPointFromAngleAndDistance(-37,82);
-  
-  addPointFromAngleAndDistance(-36,82);
-  
-  addPointFromAngleAndDistance(-35,82);
-  
-  addPointFromAngleAndDistance(-34,82);
-  
-  addPointFromAngleAndDistance(-33,82);
-  
-  addPointFromAngleAndDistance(-32,82);
-  
-  addPointFromAngleAndDistance(-31,82);
-  
-  addPointFromAngleAndDistance(-30,82);
-  
-  addPointFromAngleAndDistance(-29,77);
-  
-  addPointFromAngleAndDistance(-28,77);
-  
-  addPointFromAngleAndDistance(-27,77);
-  
-  addPointFromAngleAndDistance(-26,77);
-  
-  addPointFromAngleAndDistance(-25,77);
-  
-  addPointFromAngleAndDistance(-24,77);
-  
-  addPointFromAngleAndDistance(-23,77);
-  
-  addPointFromAngleAndDistance(-22,77);
-  
-  addPointFromAngleAndDistance(-21,77);
-  
-  addPointFromAngleAndDistance(-20,77);
-  
-  addPointFromAngleAndDistance(-19,72);
-  
-  addPointFromAngleAndDistance(-18,72);
-  
-  addPointFromAngleAndDistance(-17,77);
-  
-  addPointFromAngleAndDistance(-16,77);
-  
-  addPointFromAngleAndDistance(-15,77);
-  
-  addPointFromAngleAndDistance(-14,77);
-  
-  addPointFromAngleAndDistance(-13,77);
-  
-  addPointFromAngleAndDistance(-12,77);
-  
-  addPointFromAngleAndDistance(-11,77);
-  
-  addPointFromAngleAndDistance(-10,77);
-  
-  addPointFromAngleAndDistance(-9,77);
-  
-  addPointFromAngleAndDistance(-8,77);
-  
-  addPointFromAngleAndDistance(-7,77);
-  
-  addPointFromAngleAndDistance(-6,82);
-  
-  addPointFromAngleAndDistance(-5,82);
-  
-  addPointFromAngleAndDistance(-4,82);
-  
-  addPointFromAngleAndDistance(-3,82);
-  
-  addPointFromAngleAndDistance(-2,82);
-  
-  addPointFromAngleAndDistance(-1,82);
-  
-  addPointFromAngleAndDistance(0,87);
-  
-  addPointFromAngleAndDistance(1,87);
-  
-  
+void loadSamples() {
+  try {
+    String sampleFile = "samples.csv";  
+    println(sampleFile);
 
-addPointFromAngleAndDistance(2,783);
-  addPointFromAngleAndDistance(3,783);
-  
-  addPointFromAngleAndDistance(4,341);
-  
-  addPointFromAngleAndDistance(5,341);
-  
-  addPointFromAngleAndDistance(6,783);
-  
-  addPointFromAngleAndDistance(7,783);
-  
-  addPointFromAngleAndDistance(8,316);
-  
-  addPointFromAngleAndDistance(9,316);
-  
-  addPointFromAngleAndDistance(10,783);
-  
-  addPointFromAngleAndDistance(11,783);
-  
-  addPointFromAngleAndDistance(12,778);
-  
-  addPointFromAngleAndDistance(13,778);
-  
-  addPointFromAngleAndDistance(14,473);
-  
-  addPointFromAngleAndDistance(15,839);
-  
-  addPointFromAngleAndDistance(16,839);
-  
-  addPointFromAngleAndDistance(17,600);
-  
-  addPointFromAngleAndDistance(18,600);
-  
-  addPointFromAngleAndDistance(19,615);
-  
-  addPointFromAngleAndDistance(20,615);
-  
-  addPointFromAngleAndDistance(21,87);
-  
-  addPointFromAngleAndDistance(22,87);
-  
-  addPointFromAngleAndDistance(23,87);
-  
-  addPointFromAngleAndDistance(24,87);
-  
-  addPointFromAngleAndDistance(25,82);
-  
-  addPointFromAngleAndDistance(26,82);
-  
-  addPointFromAngleAndDistance(27,82);
-  
-  addPointFromAngleAndDistance(28,82);
-  
-  addPointFromAngleAndDistance(29,82);
-  
-  addPointFromAngleAndDistance(30,82);
-  
-  addPointFromAngleAndDistance(31,92);
-  
-  addPointFromAngleAndDistance(32,92);
-  
-  addPointFromAngleAndDistance(33,956);
-  
-  addPointFromAngleAndDistance(34,956);
-  
-  addPointFromAngleAndDistance(35,138);
-  
-  addPointFromAngleAndDistance(36,138);
-  
-  addPointFromAngleAndDistance(37,819);
-  
-  addPointFromAngleAndDistance(38,819);
-  
-  addPointFromAngleAndDistance(39,966);
-  
-  addPointFromAngleAndDistance(38,966);
-  
-  addPointFromAngleAndDistance(37,493);
-  
-  addPointFromAngleAndDistance(36,961);
-  
-  addPointFromAngleAndDistance(35,961);
-  
-  addPointFromAngleAndDistance(34,956);
-  
-  addPointFromAngleAndDistance(33,956);
-  
-  addPointFromAngleAndDistance(32,951);
-  
-  addPointFromAngleAndDistance(31,951);
-  
-  addPointFromAngleAndDistance(30,341);
-  
-  addPointFromAngleAndDistance(29,341);
-  
-  addPointFromAngleAndDistance(28,951);
-  
-  addPointFromAngleAndDistance(27,951);
-  
-  addPointFromAngleAndDistance(26,951);
-  
-  addPointFromAngleAndDistance(25,951);
-  
-  addPointFromAngleAndDistance(24,737);
-  
-  addPointFromAngleAndDistance(23,737);
-  
-  addPointFromAngleAndDistance(22,951);
-  
-  addPointFromAngleAndDistance(21,951);
-  
-  addPointFromAngleAndDistance(20,407);
-  
-  addPointFromAngleAndDistance(19,407);
-  
-  addPointFromAngleAndDistance(18,92);
-  
-  addPointFromAngleAndDistance(17,92);
-  
-  addPointFromAngleAndDistance(16,87);
-  
-  addPointFromAngleAndDistance(15,87);
-  
-  addPointFromAngleAndDistance(14,87);
-  
-  addPointFromAngleAndDistance(13,87);
-  
-  addPointFromAngleAndDistance(12,92);
-  
-  addPointFromAngleAndDistance(11,92);
-  
-  addPointFromAngleAndDistance(10,87);
-  
-  addPointFromAngleAndDistance(9,82);
-  
-  addPointFromAngleAndDistance(8,82);
-  
-  addPointFromAngleAndDistance(7,102);
-  
-  addPointFromAngleAndDistance(6,102);
-  
-  addPointFromAngleAndDistance(5,834);
-  
-  addPointFromAngleAndDistance(4,834);
-  
-  addPointFromAngleAndDistance(3,448);
-  
-  addPointFromAngleAndDistance(2,448);
-  
-  addPointFromAngleAndDistance(1,783);
-  
-  addPointFromAngleAndDistance(0,783);
-  
-  addPointFromAngleAndDistance(-1,199);
-  
-  addPointFromAngleAndDistance(-2,199);
-  
-  addPointFromAngleAndDistance(-3,692);
-  
-  addPointFromAngleAndDistance(-4,692);
-  
-  addPointFromAngleAndDistance(-5,788);
-  
-  addPointFromAngleAndDistance(-6,788);
-  
-  addPointFromAngleAndDistance(-7,610);
-  
-  addPointFromAngleAndDistance(-8,610);
-  
-  addPointFromAngleAndDistance(-9,793);
-  
-  addPointFromAngleAndDistance(-10,793);
-  
-  addPointFromAngleAndDistance(-11,87);
-  
-  addPointFromAngleAndDistance(-12,87);
-  
-  addPointFromAngleAndDistance(-13,82);
-  
-  addPointFromAngleAndDistance(-14,82);
-  
-  addPointFromAngleAndDistance(-15,72);
-  
-  addPointFromAngleAndDistance(-16,72);
-  
-  addPointFromAngleAndDistance(-17,77);
-  
-  addPointFromAngleAndDistance(-18,77);
-  
-  addPointFromAngleAndDistance(-19,77);
-  
-  addPointFromAngleAndDistance(-20,72);
-  
-  addPointFromAngleAndDistance(-21,72);
-  
-  addPointFromAngleAndDistance(-22,77);
-  
-  addPointFromAngleAndDistance(-23,77);
-  
-  addPointFromAngleAndDistance(-24,77);
-  
-  addPointFromAngleAndDistance(-25,77);
-  
-  addPointFromAngleAndDistance(-26,77);
-  
-  addPointFromAngleAndDistance(-27,77);
-  
-  addPointFromAngleAndDistance(-28,77);
-  
-  addPointFromAngleAndDistance(-29,77);
-  
-  addPointFromAngleAndDistance(-30,77);
-  
-  addPointFromAngleAndDistance(-31,77);
-  
-  addPointFromAngleAndDistance(-32,72);
-  
-  addPointFromAngleAndDistance(-33,72);
-  
-  addPointFromAngleAndDistance(-34,72);
-  
-  addPointFromAngleAndDistance(-35,72);
-  
-  addPointFromAngleAndDistance(-36,77);
-  
-  addPointFromAngleAndDistance(-37,77);
-  
-  addPointFromAngleAndDistance(-38,77);
-  
-  addPointFromAngleAndDistance(-39,77);
-  
-  addPointFromAngleAndDistance(-40,82);
-  
-  addPointFromAngleAndDistance(-41,82);
-  
-  addPointFromAngleAndDistance(-42,77);
-  
-  addPointFromAngleAndDistance(-43,77);
-  
-  addPointFromAngleAndDistance(-44,82);
-  
-  addPointFromAngleAndDistance(-45,82);
-  
-  addPointFromAngleAndDistance(-46,82);
-  
-  addPointFromAngleAndDistance(-47,82);
-  
-  addPointFromAngleAndDistance(-48,82);
-  
-  addPointFromAngleAndDistance(-49,82);
-  
-  addPointFromAngleAndDistance(-50,82);
-  
-  addPointFromAngleAndDistance(-51,87);
-  
-  addPointFromAngleAndDistance(-52,87);
-  
-  addPointFromAngleAndDistance(-53,87);
-  
-  addPointFromAngleAndDistance(-54,87);
-  
-  addPointFromAngleAndDistance(-55,97);
-  
-  addPointFromAngleAndDistance(-56,97);
-  
-  addPointFromAngleAndDistance(-55,102);
-  
-  addPointFromAngleAndDistance(-54,102);
-  
-  addPointFromAngleAndDistance(-53,97);
-  
-  addPointFromAngleAndDistance(-52,97);
-  
-  addPointFromAngleAndDistance(-51,97);
-  
-  addPointFromAngleAndDistance(-50,97);
-  
-  addPointFromAngleAndDistance(-49,92);
-  
-  addPointFromAngleAndDistance(-48,92);
-  
-  addPointFromAngleAndDistance(-47,92);
-  
-  addPointFromAngleAndDistance(-46,92);
-  
-  addPointFromAngleAndDistance(-45,87);
-  
-  addPointFromAngleAndDistance(-44,87);
-  
-  addPointFromAngleAndDistance(-43,87);
-  
-  addPointFromAngleAndDistance(-42,87);
-  
-  addPointFromAngleAndDistance(-41,87);
-  
-  addPointFromAngleAndDistance(-40,87);
-  
-  addPointFromAngleAndDistance(-39,87);
-  
-  addPointFromAngleAndDistance(-38,82);
-  
-  addPointFromAngleAndDistance(-37,82);
-  
-  addPointFromAngleAndDistance(-36,82);
-  
-  addPointFromAngleAndDistance(-35,82);
-  
-  addPointFromAngleAndDistance(-34,77);
-  
-  addPointFromAngleAndDistance(-33,77);
-  
-  addPointFromAngleAndDistance(-32,77);
-  
-  addPointFromAngleAndDistance(-31,77);
-  
-  addPointFromAngleAndDistance(-30,82);
-  
-  addPointFromAngleAndDistance(-29,82);
-  
-  addPointFromAngleAndDistance(-28,77);
-  
-  addPointFromAngleAndDistance(-27,77);
-  
-  addPointFromAngleAndDistance(-26,77);
-  
-  addPointFromAngleAndDistance(-25,77);
-  
-  addPointFromAngleAndDistance(-24,77);
-  
-  addPointFromAngleAndDistance(-23,77);
-  
-  addPointFromAngleAndDistance(-22,77);
-  
-  addPointFromAngleAndDistance(-21,77);
-  
-  addPointFromAngleAndDistance(-20,77);
-  
-  addPointFromAngleAndDistance(-19,77);
-  
-  addPointFromAngleAndDistance(-18,77);
-  
-  addPointFromAngleAndDistance(-17,77);
-  
-  addPointFromAngleAndDistance(-16,77);
-  
-  addPointFromAngleAndDistance(-15,77);
-  
-  addPointFromAngleAndDistance(-14,77);
-  
-  addPointFromAngleAndDistance(-13,77);
-  
-  addPointFromAngleAndDistance(-12,72);
-  
-  addPointFromAngleAndDistance(-11,72);
-  
-  addPointFromAngleAndDistance(-10,77);
-  
-  addPointFromAngleAndDistance(-9,72);
-  
-  addPointFromAngleAndDistance(-8,72);
-  
-  addPointFromAngleAndDistance(-7,77);
-  
-  addPointFromAngleAndDistance(-6,77);
-  
-  addPointFromAngleAndDistance(-5,87);
-  
-  addPointFromAngleAndDistance(-4,87);
-  
-  addPointFromAngleAndDistance(-3,82);
-  
-  addPointFromAngleAndDistance(-2,82);
-  
-  addPointFromAngleAndDistance(-1,87);
-  
-  addPointFromAngleAndDistance(0,87);
-  
-  addPointFromAngleAndDistance(1,183);
-  
-  addPointFromAngleAndDistance(2,183);
-  
-  addPointFromAngleAndDistance(3,783);
-  
-  addPointFromAngleAndDistance(4,783);
-  
-  addPointFromAngleAndDistance(5,778);
-  
-  addPointFromAngleAndDistance(6,778);
-  
-  addPointFromAngleAndDistance(7,615);
-  
-  addPointFromAngleAndDistance(8,615);
-  
-  addPointFromAngleAndDistance(9,768);
-  
-  addPointFromAngleAndDistance(10,768);
-  
-  addPointFromAngleAndDistance(11,326);
-  
-  addPointFromAngleAndDistance(12,326);
-  
-  addPointFromAngleAndDistance(13,788);
-  
-  addPointFromAngleAndDistance(14,788);
-  
-  addPointFromAngleAndDistance(15,97);
-  
-  addPointFromAngleAndDistance(16,97);
-  
-  addPointFromAngleAndDistance(17,605);
-  
-  addPointFromAngleAndDistance(18,605);
-  
-  addPointFromAngleAndDistance(19,87);
-  
-  addPointFromAngleAndDistance(20,87);
-  
-  addPointFromAngleAndDistance(21,87);
-  
-  addPointFromAngleAndDistance(22,82);
-  
-  addPointFromAngleAndDistance(23,82);
-  
-  addPointFromAngleAndDistance(24,87);
-  
-  addPointFromAngleAndDistance(25,87);
+    InputStream fis = createInput(sampleFile);
+
+    //Construct BufferedReader from InputStreamReader
+    BufferedReader br = new BufferedReader(new InputStreamReader(fis));
+
+    String line = null;
+    while ( (line = br.readLine ()) != null) {
+      onDataRead(line);
+    }
+
+    br.close();
+  } 
+  catch (Exception e) 
+  { 
+    e.printStackTrace();
+  }
 }
-
 
 
