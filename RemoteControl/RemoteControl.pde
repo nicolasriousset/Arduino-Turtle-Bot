@@ -287,7 +287,9 @@ class LoadSamplesThread extends Thread {
   }
 
   public void run() {
-    loadSamples();
+    while (true) {
+      loadSamples();
+    }
   }
 
   void loadSamples() {
