@@ -53,10 +53,8 @@ void setup() {
   }
 
   size(SIDE_LENGTH, SIDE_LENGTH/2, P2D);
-  println("Beginning setup 2");
   noStroke();
   //smooth();
-  println("Beginning setup 3");
   rectMode(CENTER);
 
   println("End setup");
@@ -64,7 +62,6 @@ void setup() {
 
 
 void draw() {
-  // println("Draw");
   background(0);
 
   drawRadar();
@@ -91,7 +88,6 @@ void addAngleToHistory(int angle) {
 
 
 void drawRadarLine() {
-  // println("drawRadarLine");
   for (int i=0; i<HISTORY_SIZE; i++) {
 
     stroke(50, 150, 50, 255 - (25*i));
@@ -150,15 +146,12 @@ ArrayList<ArrayList<Measure>> detectObstacles() {
 void drawObstacles(ArrayList<ArrayList<Measure>> obstacles) {
 
   // For each group, compute a line.
-  println("Drawing groups");
   for (List<Measure> obstacle : obstacles) {
     if (obstacle.size() <= 1)
       continue;
-    println("Identified obstacle with size " + obstacle.size());
     Measure left = new Measure(obstacle.get(0));
     Measure right = new Measure(left); 
     for (Measure neighbour : obstacle) {
-      println("Comparing " + neighbour + " with " + left + " and " + right);
       if (left.getAngle() < neighbour.getAngle()) {
         left.setAngle(neighbour.getAngle()); 
         left.setDistanceCm(neighbour.getDistanceCm());
@@ -172,13 +165,11 @@ void drawObstacles(ArrayList<ArrayList<Measure>> obstacles) {
     stroke(204, 102, 0);
     Point leftPoint = left.computePoint();
     Point rightPoint = right.computePoint();
-    println("Draw line from " + leftPoint + " to " + rightPoint + "(from " + left + " to " + right+ ")"); 
     line(leftPoint.getX(), leftPoint.getY(), rightPoint.getX(), rightPoint.getY());
   }
 }
 
 void drawMeasures() {
-  // println("drawMeasures");
   for (Measure measure : measures) {
 
     if (measure != null && measure.getDistanceCm() > 0) {
@@ -195,7 +186,6 @@ void drawMeasures() {
 }
 
 void drawRadar() {
-  // println("drawRadar");
   stroke(100);
   noFill();
 
@@ -211,21 +201,18 @@ void drawRadar() {
 }
 
 void shiftHistoryArray() {
-  // println("shiftHistoryArray");
   for (int i = HISTORY_SIZE; i > 1; i--) {
     radarLineHistory[i-1] = radarLineHistory[i-2];
   }
 }
 
 void shiftMeasuresArray() {
-  // println("shiftMeasuresArray");
   for (int i = MEASURES_HISTORY_SIZE; i > 1; i--) {
       measures[i-1] = measures[i-2];
   }
 }
 
 void serialEvent(Serial cPort) {
-  println("serialEvent");
   comPortString = cPort.readString();
   if (comPortString != null) {
     onDataRead(comPortString);
@@ -235,7 +222,6 @@ void serialEvent(Serial cPort) {
 void onDataRead(String data) {
   data=trim(data);
 
-  println("Parsing " + data);
   String[] values = split(data, ',');
   try {
     int angle = Integer.parseInt(values[0]);      
@@ -348,10 +334,7 @@ class LoadSamplesThread extends Thread {
 
   void loadSamples() {
     try {
-      String sampleFile = "samples.csv";  
-      println(sampleFile);
-
-      InputStream fis = createInput(sampleFile);
+      InputStream fis = createInput("samples.csv");
 
       //Construct BufferedReader from InputStreamReader
       BufferedReader br = new BufferedReader(new InputStreamReader(fis));
