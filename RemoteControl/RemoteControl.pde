@@ -7,18 +7,15 @@ int SIDE_LENGTH = 1000;
 int ANGLE_BOUNDS = 90;
 int ANGLE_STEP = 2;
 int HISTORY_SIZE = 100;
-int POINTS_HISTORY_SIZE = HISTORY_SIZE;
+int MEASURES_HISTORY_SIZE = HISTORY_SIZE;
 int MAX_DISTANCE = 120;
 
 int radius = SIDE_LENGTH / 4;
-float x = 0.0;
-float y = 0.0;
 float leftAngleRad  = radians(-ANGLE_BOUNDS) - HALF_PI; 
 float rightAngleRad = radians(ANGLE_BOUNDS) - HALF_PI;
 
-float[] historyX = new float[HISTORY_SIZE]; // used by the radar line
-float[] historyY = new float[HISTORY_SIZE]; // used by the radar line
-Point[] points = new Point[POINTS_HISTORY_SIZE];
+Point[] radarLineHistory = new Point[HISTORY_SIZE]; // used by the radar line
+Measure[] measures = new Measure[MEASURES_HISTORY_SIZE];
 
 int centerX = SIDE_LENGTH / 2; 
 int centerY= SIDE_LENGTH / 2;
@@ -72,23 +69,24 @@ void draw() {
 
   drawRadar();
 
-  drawFoundObjects();
+  drawMeasures();
   drawRadarLine();
-  drawIdentifiedObjects();
+  
+  ArrayList<ArrayList<Measure>> obstacles = detectObstacles();
+  drawObstacles(obstacles);
 }
 
 void addAngleToHistory(int angle) {
   shiftHistoryArray();
   float radian = radians(angle);
-  x = radius * sin(radian);
-  y = radius * cos(radian);
+  int x = (int)(radius * sin(radian));
+  int y = (int)(radius * cos(radian));
 
 
-  float px = centerX + x;
-  float py = centerY - y;
+  int px = centerX + x;
+  int py = centerY - y;
 
-  historyX[0] = px;
-  historyY[0] = py;
+  radarLineHistory[0] = new Point(px, py);
 }
 
 
@@ -97,44 +95,38 @@ void drawRadarLine() {
   for (int i=0; i<HISTORY_SIZE; i++) {
 
     stroke(50, 150, 50, 255 - (25*i));
-    line(centerX, centerY, historyX[i], historyY[i]);
+    Point endOfLine = radarLineHistory[i];
+    if (endOfLine != null) {
+      line(centerX, centerY, endOfLine.getX(), endOfLine.getY());
+    }
   }
 }
 
 void addPointFromAngleAndDistance(int angle, int distanceCm) {
-  shiftPointsArray();
+  shiftMeasuresArray();
 
-  int distancePixels = int(map(distanceCm, 1, MAX_DISTANCE, 1, radius));
   print("angle : ");
   print(angle);
   print(", distance (cm): ");
   println(distanceCm);
 
-  float radian = radians(angle);
-  x = distancePixels * sin(radian);
-  y = distancePixels * cos(radian);
-
-  int px = (int)(centerX + x);
-  int py = (int)(centerY - y);
-
-  points[0] = new Point(px, py);
+  measures[0] = new Measure(angle, distanceCm);
 
   addAngleToHistory(angle);
 }
 
-void drawIdentifiedObjects() {
-  ArrayList<ArrayList<Point>> pointsGroupedByProximity = new ArrayList<ArrayList<Point>>();
-  for (int i=0; i<POINTS_HISTORY_SIZE; i++) {
+ArrayList<ArrayList<Measure>> detectObstacles() {
+  // An obstacle is a group of neighbouring measures
+  ArrayList<ArrayList<Measure>> obstacles = new ArrayList<ArrayList<Measure>>();
+  for (Measure measure : measures) {
+    if (measure != null && measure.getDistanceCm() >0) {
 
-    Point point = points[i];
-    if (point != null) {
-      if (point.x==0 && point.y==0) continue;
-
+      // Compare with each detected obstacle. If close enough, add to the obstacle, else, create new obstacle.
       boolean wasAdded = false;
-      for (List<Point> pointsGroup : pointsGroupedByProximity) {
-        for (Point neighbour : pointsGroup) {
-          if (neighbour.distance(point) < 20) {
-            pointsGroup.add(point);
+      for (List<Measure> obstacle : obstacles) {
+        for (Measure otherMeasure : obstacle) {
+          if (otherMeasure.computeDistance(measure) < measure.computeMinDistance()) {
+            obstacle.add(new Measure(measure));
             wasAdded = true;
             break;
           }
@@ -145,52 +137,59 @@ void drawIdentifiedObjects() {
       }
 
       if (!wasAdded) {
-        ArrayList<Point> newGroup = new ArrayList<Point>();
-        newGroup.add(point);
-        pointsGroupedByProximity.add(newGroup);
+        ArrayList<Measure> newObstacle = new ArrayList<Measure>();
+        newObstacle.add(new Measure(measure));
+        obstacles.add(newObstacle);
       }
     }
   }
+  
+  return obstacles;
+}
+
+void drawObstacles(ArrayList<ArrayList<Measure>> obstacles) {
 
   // For each group, compute a line.
   println("Drawing groups");
-  for (List<Point> pointsGroup : pointsGroupedByProximity) {
-    println("Draw group");
-    Point left = new Point(pointsGroup.get(0).getX(), pointsGroup.get(0).getY());
-    Point right = new Point(left.getX(), left.getY()); 
-    for (Point neighbour : pointsGroup) {
-      if (left.getX() < neighbour.getX()) {
-        left.setX(neighbour.getX()); 
-        left.setY(neighbour.getY());
+  for (List<Measure> obstacle : obstacles) {
+    if (obstacle.size() <= 1)
+      continue;
+    println("Identified obstacle with size " + obstacle.size());
+    Measure left = new Measure(obstacle.get(0));
+    Measure right = new Measure(left); 
+    for (Measure neighbour : obstacle) {
+      println("Comparing " + neighbour + " with " + left + " and " + right);
+      if (left.getAngle() < neighbour.getAngle()) {
+        left.setAngle(neighbour.getAngle()); 
+        left.setDistanceCm(neighbour.getDistanceCm());
       }
-      if (right.getX() > neighbour.getX()) {
-        right.setX(neighbour.getX()); 
-        right.setY(neighbour.getY());
+      if (right.getAngle() > neighbour.getAngle()) {
+        right.setAngle(neighbour.getAngle()); 
+        right.setDistanceCm(neighbour.getDistanceCm());
       }
     }
     fill(204, 102, 0);
     stroke(204, 102, 0);
-    line(left.getX(), left.getY(), right.getX(), right.getY());
+    Point leftPoint = left.computePoint();
+    Point rightPoint = right.computePoint();
+    println("Draw line from " + leftPoint + " to " + rightPoint + "(from " + left + " to " + right+ ")"); 
+    line(leftPoint.getX(), leftPoint.getY(), rightPoint.getX(), rightPoint.getY());
   }
 }
 
-void drawFoundObjects() {
-  // println("drawFoundObjects");
-  for (int i=0; i<POINTS_HISTORY_SIZE; i++) {
+void drawMeasures() {
+  // println("drawMeasures");
+  for (Measure measure : measures) {
 
-    Point point = points[i];
-    if (point != null) {
-      int x = point.x;
-      int y = point.y;
+    if (measure != null && measure.getDistanceCm() > 0) {
+      Point point = measure.computePoint();
 
-      if (x==0 && y==0) continue;
-
-      int colorAlfa = 50; // (int)map(i, 0, POINTS_HISTORY_SIZE, 50, 20);
-      int size = 10; // (int)map(i, 0, POINTS_HISTORY_SIZE, 30, 5);
+      int colorAlfa = 50; // (int)map(i, 0, MEASURES_HISTORY_SIZE, 50, 20);
+      int size = 10; // (int)map(i, 0, MEASURES_HISTORY_SIZE, 30, 5);
 
       fill(50, 150, 50, colorAlfa);
       noStroke();
-      ellipse(x, y, size, size);
+      ellipse(point.x, point.y, size, size);
     }
   }
 }
@@ -200,12 +199,10 @@ void drawRadar() {
   stroke(100);
   noFill();
 
-  // casti kruznic vzdalenosti od stredu
   for (int i = 0; i <= (SIDE_LENGTH / 100); i++) {
     arc(centerX, centerY, 100 * i, 100 * i, leftAngleRad, rightAngleRad);
   }
 
-  // ukazatele uhlu
   for (int i = 0; i <= (ANGLE_BOUNDS*2/20); i++) {
     float angle = -ANGLE_BOUNDS + i * 20;
     float radAngle = radians(angle);
@@ -216,20 +213,14 @@ void drawRadar() {
 void shiftHistoryArray() {
   // println("shiftHistoryArray");
   for (int i = HISTORY_SIZE; i > 1; i--) {
-    historyX[i-1] = historyX[i-2];
-    historyY[i-1] = historyY[i-2];
+    radarLineHistory[i-1] = radarLineHistory[i-2];
   }
 }
 
-void shiftPointsArray() {
-  // println("shiftPointsArray");
-  for (int i = POINTS_HISTORY_SIZE; i > 1; i--) {
-    Point oldPoint = points[i-2];
-    if (oldPoint != null) {
-
-      Point point = new Point(oldPoint.x, oldPoint.y);
-      points[i-1] = point;
-    }
+void shiftMeasuresArray() {
+  // println("shiftMeasuresArray");
+  for (int i = MEASURES_HISTORY_SIZE; i > 1; i--) {
+      measures[i-1] = measures[i-2];
   }
 }
 
@@ -253,6 +244,63 @@ void onDataRead(String data) {
   } 
   catch (Exception e) {
   }
+}
+
+class Measure {
+  private int angle;
+  private int distanceCm;
+  
+  public Measure(int angle, int distanceCm) {
+    this.angle = angle;
+    this.distanceCm = distanceCm;
+  }
+  
+  public Measure(Measure other) {
+    this.angle = other.angle;
+    this.distanceCm = other.distanceCm;
+  }
+
+  public int getDistanceCm() {
+    return distanceCm;
+  }
+
+  public void setDistanceCm(int distanceCm) {
+    this.distanceCm = distanceCm;
+  }
+
+  public int getAngle() {
+    return angle;
+  }
+  
+  public void setAngle(int angle) {
+    this.angle = angle;
+  }
+
+  Point computePoint() {
+    int distancePixels = int(map(distanceCm, 1, MAX_DISTANCE, 1, radius));
+
+    float radian = radians(angle);
+    int x = (int)(distancePixels * sin(radian));
+    int y = (int)(distancePixels * cos(radian));
+  
+    int px = (int)(centerX + x);
+    int py = (int)(centerY - y);
+  
+    return new Point(px, py);    
+  }
+
+  public float computeDistance(Measure other) {
+    return computePoint().computeDistance(other.computePoint()); // TODO : should return value in cm
+  }
+  
+  public float computeMinDistance() {
+    return 20; // TODO : compute real distance in cm
+  }
+  
+  public String toString() {
+    return angle + "deg, " + distanceCm + "cm"; 
+  }
+  
 }
 
 class Point {
@@ -279,8 +327,12 @@ class Point {
     this.y = y;
   }
 
-  float distance(Point other) {
+  float computeDistance(Point other) {
     return sqrt(sq(x - other.x) + sq(y - other.y));
+  }
+  
+  String toString() {
+    return "[" + x + ", " + y + "]";
   }
 }
 
