@@ -101,12 +101,18 @@ void drawRadarLine() {
   }
 }
 
-void addPointFromAngleAndDistance(int angle, int distance) {
+void addPointFromAngleAndDistance(int angle, int distanceCm) {
   shiftPointsArray();
 
+  int distancePixels = int(map(distanceCm, 1, MAX_DISTANCE, 1, radius));
+  print("angle : ");
+  print(angle);
+  print(", distance (cm): ");
+  println(distanceCm);
+
   float radian = radians(angle);
-  x = distance * sin(radian);
-  y = distance * cos(radian);
+  x = distancePixels * sin(radian);
+  y = distancePixels * cos(radian);
 
   int px = (int)(centerX + x);
   int py = (int)(centerY - y);
@@ -242,12 +248,8 @@ void onDataRead(String data) {
   String[] values = split(data, ',');
   try {
     int angle = Integer.parseInt(values[0]);      
-    int distance = int(map(Integer.parseInt(values[1]), 1, MAX_DISTANCE, 1, radius));
-    print("angle : ");
-    print(angle);
-    print(", distance : ");
-    println(distance);
-    addPointFromAngleAndDistance(angle, distance);
+    int distanceCm = Integer.parseInt(values[1]);
+    addPointFromAngleAndDistance(angle, distanceCm);
   } 
   catch (Exception e) {
   }
