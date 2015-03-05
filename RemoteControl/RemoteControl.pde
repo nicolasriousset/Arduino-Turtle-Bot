@@ -69,7 +69,7 @@ void draw() {
   drawMeasures();
   drawRadarLine();
   
-  ArrayList<ArrayList<Measure>> obstacles = detectObstacles();
+  Obstacles obstacles = detectObstacles();
   drawObstacles(obstacles);
 }
 
@@ -98,28 +98,25 @@ void drawRadarLine() {
   }
 }
 
-void addPointFromAngleAndDistance(int angle, int distanceCm) {
+void addMeasure(int angle, int distanceCm) {
   shiftMeasuresArray();
 
-  print("angle : ");
-  print(angle);
-  print(", distance (cm): ");
-  println(distanceCm);
+  println("angle : "+ angle + ", distance (cm): " + distanceCm);
 
   measures[0] = new Measure(angle, distanceCm);
 
   addAngleToHistory(angle);
 }
 
-ArrayList<ArrayList<Measure>> detectObstacles() {
+Obstacles detectObstacles() {
   // An obstacle is a group of neighbouring measures
-  ArrayList<ArrayList<Measure>> obstacles = new ArrayList<ArrayList<Measure>>();
+  Obstacles obstacles = new Obstacles();
   for (Measure measure : measures) {
     if (measure != null && measure.getDistanceCm() >0) {
 
       // Compare with each detected obstacle. If close enough, add to the obstacle, else, create new obstacle.
       boolean wasAdded = false;
-      for (List<Measure> obstacle : obstacles) {
+      for (Obstacle obstacle : obstacles) {
         for (Measure otherMeasure : obstacle) {
           if (otherMeasure.computeDistance(measure) < measure.computeMinDistance()) {
             obstacle.add(new Measure(measure));
@@ -133,7 +130,7 @@ ArrayList<ArrayList<Measure>> detectObstacles() {
       }
 
       if (!wasAdded) {
-        ArrayList<Measure> newObstacle = new ArrayList<Measure>();
+        Obstacle newObstacle = new Obstacle();
         newObstacle.add(new Measure(measure));
         obstacles.add(newObstacle);
       }
@@ -143,7 +140,7 @@ ArrayList<ArrayList<Measure>> detectObstacles() {
   return obstacles;
 }
 
-void drawObstacles(ArrayList<ArrayList<Measure>> obstacles) {
+void drawObstacles(Obstacles obstacles) {
 
   // For each group, compute a line.
   for (List<Measure> obstacle : obstacles) {
@@ -226,7 +223,7 @@ void onDataRead(String data) {
   try {
     int angle = Integer.parseInt(values[0]);      
     int distanceCm = Integer.parseInt(values[1]);
-    addPointFromAngleAndDistance(angle, distanceCm);
+    addMeasure(angle, distanceCm);
   } 
   catch (Exception e) {
   }
@@ -354,3 +351,8 @@ class LoadSamplesThread extends Thread {
   }
 }
 
+class Obstacle extends ArrayList<Measure>{
+} 
+
+class Obstacles extends ArrayList<Obstacle> {
+}
