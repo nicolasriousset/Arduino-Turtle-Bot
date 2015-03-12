@@ -8,7 +8,7 @@ int ANGLE_BOUNDS = 90;
 int ANGLE_STEP = 2;
 int HISTORY_SIZE = 100;
 int MEASURES_HISTORY_SIZE = HISTORY_SIZE;
-int MAX_DISTANCE = 120;
+int MAX_DISTANCE = 40;
 
 int radius = SIDE_LENGTH / 4;
 float leftAngleRad  = radians(-ANGLE_BOUNDS) - HALF_PI; 
@@ -21,7 +21,7 @@ int centerX = SIDE_LENGTH / 2;
 int centerY= SIDE_LENGTH / 2;
 
 boolean isInitialized = false;
-boolean isTestMode = true;
+boolean isTestMode = false;
 
 String comPortString;
 Serial myPort = null;
@@ -221,8 +221,10 @@ void onDataRead(String data) {
 
   String[] values = split(data, ',');
   try {
-    int angle = Integer.parseInt(values[0]);      
-    int distanceCm = Integer.parseInt(values[1]);
+    char command = values[0].charAt(0);      
+
+    int angle = Integer.parseInt(values[1]);      
+    int distanceCm = Integer.parseInt(values[2]);
     addMeasure(angle, distanceCm);
   } 
   catch (Exception e) {
